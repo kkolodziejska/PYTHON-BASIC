@@ -17,8 +17,18 @@ with open(filename) as opened_file:
         ...
 """
 from typing import Tuple
+import math
 
 
 def get_min_max(filename: str) -> Tuple[int, int]:
-    ...
+    min_int = math.inf
+    max_int = - math.inf
 
+    with open(filename) as opened_file:
+        for line in opened_file:
+            if int(line) > max_int:
+                max_int = int(line)
+            if int(line) < min_int:
+                min_int = int(line)
+
+    return min_int, max_int
