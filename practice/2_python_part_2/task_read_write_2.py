@@ -22,3 +22,14 @@ def generate_words(n=20):
         words.append(word)
 
     return words
+
+
+if __name__ == '__main__':
+
+    random_words = generate_words(3)
+
+    with open("file1.txt", 'w', encoding='utf-8') as f:
+        print(*random_words, sep='\n', end='', file=f)
+
+    with open("file2.txt", 'w', encoding='cp1252') as f:
+        print(*random_words, sep=', ', end='', file=f)
