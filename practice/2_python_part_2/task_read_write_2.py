@@ -22,3 +22,19 @@ def generate_words(n=20):
         words.append(word)
 
     return words
+
+
+def read_write_2(filename_1: str = "file1.txt",
+                 filename_2: str = "file2.txt",
+                 number_of_words: int = 3) -> None:
+    random_words = generate_words(number_of_words)
+
+    with open(filename_1, 'w', encoding='utf-8') as f:
+        print(*random_words, sep='\n', end='', file=f)
+
+    with open(filename_2, 'w', encoding='cp1252') as f:
+        print(*reversed(random_words), sep=',', end='', file=f)
+
+
+if __name__ == '__main__':
+    read_write_2()
