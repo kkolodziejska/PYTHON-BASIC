@@ -34,7 +34,3 @@ def division(x: int, y: int) -> typing.Union[None, int]:
         return result
     finally:
         print("Division finished")
-
-
-if __name__ == '__main__':
-    division(2, 2)

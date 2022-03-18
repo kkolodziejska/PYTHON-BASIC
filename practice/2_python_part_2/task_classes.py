@@ -49,7 +49,8 @@ class Homework:
 
     def is_active(self) -> bool:
         """Check if task already closed."""
-        return self.created + self.deadline <= datetime.datetime.now()
+        print(self.created + self.deadline)
+        return self.created + self.deadline >= datetime.datetime.now()
 
 
 class Teacher:

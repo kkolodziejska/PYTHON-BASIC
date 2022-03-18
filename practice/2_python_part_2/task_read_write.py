@@ -16,8 +16,7 @@ Example:
 import os
 
 
-def main():
-    directory = 'files'
+def read_write(result_filename: str, directory: str = 'files') -> None:
     values = []
     filenames = os.listdir(directory)
     filenames.sort(key=lambda item: (len(item), item))
@@ -28,9 +27,9 @@ def main():
             value = f.read()
             values.append(value)
 
-    with open('result.txt', 'w') as f:
+    with open(result_filename, 'w') as f:
         f.write(', '.join(values))
 
 
 if __name__ == '__main__':
-    main()
+    read_write('result.txt')

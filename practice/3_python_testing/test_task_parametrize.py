@@ -9,9 +9,12 @@ Task:
  1. Write a test with @pytest.mark.parametrize decorator.
  2. Find the buggy function and fix it.
 """
+import pytest
 
 
 def fibonacci_1(n):
+    if n == 0:
+        return 0
     a, b = 0, 1
     for _ in range(n-1):
         a, b = b, a + b
@@ -20,6 +23,25 @@ def fibonacci_1(n):
 
 def fibonacci_2(n):
     fibo = [0, 1]
-    for i in range(1, n+1):
+    for i in range(2, n+1):
         fibo.append(fibo[i-1] + fibo[i-2])
     return fibo[n]
+
+
+TEST_CASES = [('func1', 1, 1),
+              ('func1', 0, 0),
+              ('func1', 2, 1),
+              ('func1', 11, 89),
+              ('func2', 1, 1),
+              ('func2', 0, 0),
+              ('func2', 2, 1),
+              ('func2', 11, 89),
+              ]
+
+
+@pytest.mark.parametrize('func, number, expected', TEST_CASES)
+def test_fibonacci(func, number, expected):
+    if func == 'func1':
+        assert fibonacci_1(number) == expected
+    elif func == 'func2':
+        assert fibonacci_2(number) == expected
