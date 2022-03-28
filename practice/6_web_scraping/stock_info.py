@@ -32,57 +32,28 @@ Links:
     - beautiful soup docs: https://www.crummy.com/software/BeautifulSoup/bs4/doc/
     - lxml docs: https://lxml.de/
 """
-import pytest
 from bs4 import BeautifulSoup as bsoup
 import requests
 import re
-import unittest.mock
-from pytest import mark
 
 
-def get_stocks_info() -> dict:
+def get_stocks_info() -> list:
     headers = {'Host': 'finance.yahoo.com',
                'User-Agent': 'python requests 2.27.1'}  # IS IT GOOD PRACTISE TO CHANGE THIS?
     s = requests.Session()
     s.headers = headers
 
     number_of_stocks = get_number_of_stocks(s)
+    all_stocks = get_stocks_name_code(s, number_of_stocks)
 
-    all_stocks = get_all_stocks(s, number_of_stocks)
-
-    for stock_symbol in all_stocks:
-
-        all_stocks[stock_symbol].update(get_stock_profile(s, stock_symbol))
-        all_stocks[stock_symbol].update(get_stock_holder(s, stock_symbol))
-        all_stocks[stock_symbol].update(get_stock_52_week_change(s, stock_symbol))
+    for stock in all_stocks:
+        stock_symbol = stock['Code']
+        stock.update(get_stock_profile(s, stock_symbol))
+        stock.update(get_stock_holder(s, stock_symbol))
+        stock.update(get_stock_52_week_change(s, stock_symbol))
 
     s.close()
-
     return all_stocks
-
-
-# TODO: REWRITE 3 FUNCTIONS UNDER AND SAVE DATA TO FILE
-def get_5_youngest_ceos():
-    stocks = get_stocks_info()
-    stocks_sorted = sorted(stocks.items(), key=lambda x: x[1]['ceo_born'],
-                           reverse=True)[:5]
-    return stocks_sorted
-
-
-def get_10_best_52_week_change():
-    stocks = get_stocks_info()
-    stocks_sorted = sorted(stocks.items(),
-                           key=lambda x: float(x[1]['52-Week Change'].strip('%')),
-                           reverse=True)[:10]
-    return stocks_sorted
-
-
-def get_10_blackrock_holds():
-    stocks = get_stocks_info()
-    stocks_sorted = sorted(stocks.items(),
-                           key=lambda x: int(x[1]['Shares'].replace(',', ''))
-                           if x[1]['Shares'] != '' else 0, reverse=True)[:10]
-    return stocks_sorted
 
 
 def get_number_of_stocks(s: requests.Session) -> str:
@@ -94,13 +65,13 @@ def get_number_of_stocks(s: requests.Session) -> str:
     return results
 
 
-def get_all_stocks(s: requests.Session, count: str = '25') -> dict:
+def get_stocks_name_code(s: requests.Session, count: str = '25') -> list:
     url = 'https://finance.yahoo.com/most-active'
     response = s.get(url, params={'count': count, 'offset': '0'})
     soup = bsoup(response.text, features='html.parser')
 
-    all_stocks = {symbol.text: {'Name': symbol.a['title']} for symbol
-                  in soup.find_all("td", attrs={'aria-label': 'Symbol'})}
+    all_stocks = [{'Code': symbol.text, 'Name': symbol.a['title']} for symbol
+                  in soup.find_all("td", attrs={'aria-label': 'Symbol'})]
 
     return all_stocks
 
@@ -120,10 +91,10 @@ def get_stock_profile(s: requests.Session, symbol: str) -> dict:
     youngest_ceo = soup.find('span', string=newest_year).find_parent('td')\
         .find_previous_siblings('td', class_='Ta(start)')[-1].text
 
-    return {'country_name': country_name,
-            'employees': employees,
-            'youngest_ceo': youngest_ceo,
-            'ceo_born': newest_year}
+    return {'Country': country_name,
+            'Employees': employees,
+            'CEO Name': youngest_ceo,
+            'CEO Year Born': newest_year}
 
 
 def get_stock_holder(s: requests.Session, symbol: str) -> dict:
@@ -156,84 +127,62 @@ def get_stock_52_week_change(s: requests.Session, symbol: str) -> dict:
     return {'52-Week Change': week_change,
             'Total Cash': total_cash}
 
-# --------------------------------- TESTS --------------------------------------
+
+def write_5_youngest_ceos(stock_list: list) -> None:
+    stocks_sorted = sorted(stock_list, key=lambda x: x['CEO Year Born'],
+                           reverse=True)[:5]
+    headers = ['Name', 'Code', 'Country', 'Employees',
+               'CEO Name', 'CEO Year Born']
+    title = '5 stocks with youngest CEOs'
+    filename = '5_stocks_with_youngest_CEOs'
+    write_sheet_to_file(headers, stocks_sorted, title, filename)
 
 
-@pytest.fixture
-def requests_session():
-    s = requests.Session()
-    s.headers = {'Host': 'finance.yahoo.com',
-                 'User-Agent': 'python requests 2.27.1'}
-    return s
+def write_10_best_52_week_change(stock_list: list) -> None:
+    stocks_sorted = sorted(stock_list,
+                           key=lambda x: float(x['52-Week Change'].strip('%')),
+                           reverse=True)[:10]
+    headers = ['Name', 'Code', '52-Week Change', 'Total Cash']
+    title = '10 stocks with best 52-Week Change'
+    filename = '10_stocks_with_best_52-Week_Change'
+    write_sheet_to_file(headers, stocks_sorted, title, filename)
 
 
-def test_get_results(requests_session):
-    expected = '246'
-    assert get_number_of_stocks(requests_session) == expected
+def write_10_blackrock_holds(stock_list: list) -> None:
+    stocks_sorted = [stock for stock in stock_list
+                     if stock['Shares'] != ''][:10]
+    stocks_sorted.sort(key=lambda x: int(x['Shares'].replace(',', '')),
+                       reverse=True)
+    headers = ['Name', 'Code', 'Shares', 'Date Reported', '% Out', 'Value']
+    title = '10 largest holds of Blackrock Inc.'
+    filename = '10_largest_holds_of_Blackrock_Inc'
+    write_sheet_to_file(headers, stocks_sorted, title, filename)
 
 
-def test_get_all_stocks(requests_session):
-    expected = {'TLRY': {'Name': 'Tilray Brands, Inc.'},
-                'NIO': {'Name': 'NIO Inc.'},
-                }
-    assert get_all_stocks(requests_session, '2') == expected
+def write_sheet_to_file(headers: list, data: list,
+                        title: str, filename: str) -> None:
+    lens = []
+    for header in headers:
+        column_lens = [len(stock[header]) for stock in data]
+        column_lens.append(len(header))
+        lens.append(max(column_lens))
+    line_length = sum(lens) + len('/ ') * 2 + len(' / ') * (len(headers) - 1)
+    print_format = '/ ' + ' / '.join(['{:<' + str(l) + '}' for l in lens]) + ' /'
+
+    with open(f'{filename}.txt', 'w') as f:
+        print(f' {title} '.center(line_length, '='), file=f)
+        print(print_format.format(*headers), file=f)
+        print('-' * line_length, file=f)
+        for stock in data:
+            print(print_format.format(*[stock[key] for key in headers]), file=f)
 
 
-def test_get_stock_52_week_change(requests_session):
-    expected = {'52-Week Change': '-66.37%',
-                'Total Cash': '92.94B'}
-    assert get_stock_52_week_change(requests_session, 'PDD') == expected
+def main() -> None:
+    stocks = get_stocks_info()
+    write_5_youngest_ceos(stocks)
+    write_10_best_52_week_change(stocks)
+    write_10_blackrock_holds(stocks)
 
 
-@mark.parametrize('symbol, expected',
-                         [('PDD', {'Shares': '20,304,002',
-                                   'Date Reported': 'Dec 30, 2021',
-                                   '% Out': '1.62%',
-                                   'Value': '1,183,723,316'}),
-                          ('TLRY', {'Shares': '',
-                                    'Date Reported': '',
-                                    '% Out': '',
-                                    'Value': ''})])
-def test_get_stock_holder(symbol, expected, requests_session):
-    assert get_stock_holder(requests_session, symbol) == expected
-
-
-def test_get_stock_profile(requests_session):
-    expected = {'country_name': 'China',
-                'employees': '',
-                'youngest_ceo': 'Mr. Zhenwei  Zheng',
-                'ceo_born': '1984'}
-    assert get_stock_profile(requests_session, 'PDD') == expected
-
-
-@unittest.mock.patch('stock_info.get_number_of_stocks', return_value='5')
-def test_get_5_youngest_ceos(mocked_number):
-    expected = {'TLRY': {
-        'Name': 'Tilray Brands, Inc.',
-        'country_name': 'United States',
-        'employees': '1,800',
-        'youngest_ceo': 'Ms. Denise Menikheim Faltischek',
-        'ceo_born': '1973',
-        'Shares': '',
-        'Date Reported': '',
-        '% Out': '',
-        'Value': '',
-        '52-Week Change': '-60.43%',
-        'Total Cash': '331.78M'
-    },
-        'NIO': {
-            'Name': 'NIO Inc.',
-            'country_name': 'China',
-            'employees': '',
-            'youngest_ceo': 'Mr. Wei  Feng',
-            'ceo_born': '1981',
-            'Shares': '64,036,975',
-            'Date Reported': 'Dec 30, 2021',
-            '% Out': '4.78%',
-            'Value': '2,028,691,368',
-            '52-Week Change': '-43.93%',
-            'Total Cash': ''
-        }
-    }
-
-    assert get_10_blackrock_holds() == expected
+if __name__ == '__main__':
+    main()
