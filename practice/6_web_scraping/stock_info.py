@@ -166,8 +166,8 @@ def write_sheet_to_file(headers: list, data: list,
         column_lens = [len(stock[header]) for stock in data]
         column_lens.append(len(header))
         lens.append(max(column_lens))
-    line_length = sum(lens) + len('/ ') * 2 + len(' / ') * (len(headers) - 1)
-    print_format = '/ ' + ' / '.join(['{:<' + str(l) + '}' for l in lens]) + ' /'
+    line_length = sum(lens) + len('| ') * 2 + len(' | ') * (len(headers) - 1)
+    print_format = '| ' + ' | '.join(['{:<' + str(l) + '}' for l in lens]) + ' |'
 
     with open(f'{filename}.txt', 'w') as f:
         print(f' {title} '.center(line_length, '='), file=f)
